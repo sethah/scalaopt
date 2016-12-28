@@ -3,8 +3,7 @@ package linesearch
 import loss.DifferentiableFunction
 import spire.algebra.InnerProductSpace
 
-class StrongWolfe[T](implicit space: InnerProductSpace[T, Double]) extends LineSearch[T] {
-  import space._
+class StrongWolfe extends LineSearch {
   import StrongWolfe._
 
   // TODO: make configurable?
@@ -34,13 +33,22 @@ class StrongWolfe[T](implicit space: InnerProductSpace[T, Double]) extends LineS
         // check if any of the three conditions is met, otherwise increase alpha and repeat
         if ((right.phi > phiZero.phi + c1 * currentAlpha * phiZero.phiPrime) ||
           (right.phi >= left.phi && i > 0)) {
-
+          return zoom(left, right, phiZero, 0, f)
         }
+
+        if (curvatureCondition(phiZero, right, c2)) {
+          return right.alpha
+        }
+
+        if (right.phiPrime >= 0.0) {
+          return zoom(right, left, phiZero, 0, f)
+        }
+
+        left = right
+        currentAlpha *= 1.5
       }
-
-
     }
-
+    throw new Exception("Line search failed")
   }
 
   private def interpolate(left: Bracket, right: Bracket): Double = {
@@ -66,11 +74,27 @@ class StrongWolfe[T](implicit space: InnerProductSpace[T, Double]) extends LineS
     }
   }
 
-  private def zoom(left: Bracket, right: Bracket): Double = {
+  private def zoom(left: Bracket, right: Bracket, phiZero: Bracket, iter: Int, f: DifferentiableFunction[Double, Double]): Double = {
+    // TODO: explain this
+    // TODO: flip left and right if necessary
     val nextAlpha = interpolate(left, right)
-
+    val nextPhi = phi(nextAlpha, f)
+    if (iter > maxZoomIter) {
+      throw new Exception("line search failed")
+    } else if (!decreaseCondition(phiZero, nextPhi, c1) || nextPhi.phi >= left.phi) {
+      zoom(left, nextPhi, phiZero, iter + 1, f)
+    } else {
+      if (!curvatureCondition(phiZero, nextPhi, c2)) {
+        if (nextPhi.phiPrime * (right.alpha - left.alpha) >= 0.0) {
+          zoom(nextPhi, left, phiZero, iter + 1, f)
+        } else {
+          zoom(nextPhi, right, phiZero, iter + 1, f)
+        }
+      } else {
+        nextAlpha
+      }
+    }
   }
-
 }
 
 object StrongWolfe {

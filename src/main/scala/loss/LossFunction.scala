@@ -67,7 +67,6 @@ class LeastSquaresLossFunction[F](
     val yhat = mmult(data, x)
     val error = space.subVV(yhat, label)
     val (loss, grad) = (space.dotVV(error, error), mmult(data.t, error))
-    println(s"loss: $loss, grad: $grad, coef: $x")
     (loss, grad)
   }
 }

@@ -14,11 +14,9 @@ object App {
     val label = new DenseVector[Float](Array(14.0, 16.0).map(_.toFloat))
     val lf = new LeastSquaresLossFunction(m, label)
     val stoppingCriteria = (state: FirstOrderOptimizerState[DenseVector[Double], Double, (IndexedSeq[DenseVector[Double]], IndexedSeq[DenseVector[Double]])]) => {
-//      println(state.params, "a;lksdfjasl;dfj")
-      state.iter > 10
+      state.iter > 4
     }
     val stop = (state: FirstOrderOptimizerState[_, _, _]) => {
-//      println(state.value)
       state.iter > 5000
     }
 //    val stoppingCriteria =
@@ -27,7 +25,14 @@ object App {
 //          state.iter > 5
 //        }
 //      }
-    val (data, labels, coef) = new LinearDataGenerator[Double](42).generate(false, 2, 2, 0.0, 0.0)
+//    val (data, labels, coef) = new LinearDataGenerator[Double](42).generate(false, 2, 2, 0.0, 0.0)
+    val data = new DenseMatrix(2, 2, Array(-0.42802259172575496,  0.6500079069927311,
+      -0.39985491857957944,  -0.65962536952953))
+    val labels = new DenseVector(Array(-0.23214907545234986, -0.1584664514815176))
+    val coef = (1.0, 1.0)
+    println(data)
+    println(labels)
+    println(coef)
     val lossFunc = new LeastSquaresLossFunction(data, labels)
 //    val optimizer = new GradientDescent[DenseVector[Double], Double](0.005, stop)
     val optimizer = new LBFGS[DenseVector[Double], Double](7, stoppingCriteria)

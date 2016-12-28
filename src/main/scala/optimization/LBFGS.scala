@@ -1,6 +1,6 @@
 package optimization
 
-import linesearch.BacktrackingLineSearch
+import linesearch.StrongWolfe
 import loss.DifferentiableFunction
 import breeze.optimize.{LBFGS => BLBFGS}
 import spire.implicits._
@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
  * @tparam T Type of parameters being optimized.
  * @tparam F The parameter's scalar type.
  */
-class LBFGS[T, F: Order: ClassTag](
+class LBFGS[T, F: Order: NRoot: ClassTag](
     m: Int,
     override val stoppingCriteria: (FirstOrderOptimizerState[T, F, (IndexedSeq[T], IndexedSeq[T])]) => Boolean)
     (implicit space: InnerProductSpace[T, F])
@@ -59,18 +59,34 @@ class LBFGS[T, F: Order: ClassTag](
    * Simple backtracking line search for now.
    */
   def chooseStepSize(lossFunction: DifferentiableFunction[T, F], direction: T, state: State): F = {
-    // somewhat of a magic number
-    import space._
-    val beta = 0.8
+    val ls = new StrongWolfe()
+    val lineSearchFunction = new DifferentiableFunction[Double, Double] {
+      def apply(x: Double): Double = {
+        compute(x)._1
+      }
 
-    val dirNorm = direction dot direction
-    var alpha = space.scalar.one
-    while (lossFunction(state.params + (alpha *: direction)) >
-      (lossFunction(state.params) - dirNorm * alpha / 2.0)) {
-      println("updating alpha", beta, alpha)
-      alpha = alpha * beta
+      def gradientAt(x: Double): Double = compute(x)._2
+
+      def compute(x: Double): (Double, Double) = {
+        val step = space.scalar.fromDouble(x)
+        val (f, grad) = lossFunction.compute(state.params + direction :* step)
+        val thisGrad = grad dot direction
+        (f, thisGrad) match {
+          case (d1: Double, d2: Double) => (d1, d2)
+          case _ => throw new Exception("only double supported right now")
+        }
+      }
     }
-    alpha
+    // TODO: why does breeze do this?
+    val tmp1 = implicitly[NRoot[F]].sqrt((direction dot direction))
+    val tmp2 = space.scalar.one
+    val tmp3 = space.scalar.div(tmp2, tmp1)
+    val initialAlpha = if (state.iter == 0) tmp3 else space.scalar.one
+    initialAlpha match {
+      case d: Double =>
+        space.scalar.fromDouble(ls.optimize(lineSearchFunction, d))
+      case _ => throw new Exception("only double supported right now")
+    }
   }
 
   /**
@@ -124,7 +140,6 @@ object LBFGS {
 //        throw new NaNHistory
 //      }
       dir = (gradDeltas(i) :* -as(i)) + dir
-//      println("asdf", rho(i), as(i), posDeltas(i), gradDeltas(i))
     }
 
     dir = dir :* diag
