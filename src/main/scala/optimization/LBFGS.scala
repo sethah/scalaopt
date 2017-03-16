@@ -12,14 +12,10 @@ import scala.reflect.ClassTag
  * Classic LBFGS algorithm.
  *
  * @param m The number of iterations to keep history for.
- * @param stoppingCriteria Stopping criteria for iterative optimization.
  * @tparam T Type of parameters being optimized.
  * @tparam F The parameter's scalar type.
  */
-class LBFGS[T, F: Order: NRoot: ClassTag](
-    m: Int,
-    override val stoppingCriteria: (FirstOrderOptimizerState[T, F, (IndexedSeq[T], IndexedSeq[T])]) => Boolean)
-    (implicit space: InnerProductSpace[T, F])
+class LBFGS[T, F: Order: NRoot: ClassTag](m: Int)(implicit space: InnerProductSpace[T, F])
   extends FirstOrderOptimizer[T, F] {
 
   /** (deltaPosition, deltaGradient) */
@@ -27,6 +23,10 @@ class LBFGS[T, F: Order: NRoot: ClassTag](
 
   def initialHistory(lossFunction: DifferentiableFunction[T, F], initialParams: T): History = {
     (IndexedSeq.empty[T], IndexedSeq.empty[T])
+  }
+
+  def converged(state: State): Boolean = {
+    state.iter > 4
   }
 
   /**
@@ -146,7 +146,7 @@ object LBFGS {
 
     for(i <- (m - 1) to 0 by (-1)) {
       val beta = (gradDeltas(i) dot dir) / rho(i)
-      dir = (posDeltas(i) :* as(i) - beta) + dir
+      dir = (posDeltas(i) :* (as(i) - beta)) + dir
     }
     -dir
   }

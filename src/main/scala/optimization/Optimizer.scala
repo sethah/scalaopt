@@ -31,14 +31,13 @@ trait FirstOrderOptimizer[T, F] extends Optimizer[T, DifferentiableFunction[T, F
   maybe some things don't apply to all subclasses - like gd doesn't need a history...
    */
 
-//  def stoppingCriteria: StoppingCriteria[State]
-  def stoppingCriteria: (State => Boolean)
+  def converged(state: State): Boolean
 
   def optimize(lossFunction: DifferentiableFunction[T, F], initialParameters: T): T = {
 
     val allIterations =
       infiniteIterations(lossFunction, initialState(lossFunction, initialParameters))
-        .takeWhile(!stoppingCriteria(_))
+        .takeWhile(!converged(_))
     var lastIteration: State = null
     while (allIterations.hasNext) {
       lastIteration = allIterations.next()

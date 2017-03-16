@@ -9,7 +9,6 @@ import loss.DifferentiableFunction
 /**
  * Simple gradient descent implementation.
  * @param stepSize
- * @param stoppingCriteria
  * @param space We need an inner product space to be defined for type T to F because
  *              we need to be move around the parameter space.
  *
@@ -20,8 +19,7 @@ import loss.DifferentiableFunction
  * @tparam F
  */
 class GradientDescent[T, F](
-    stepSize: F,
-    override val stoppingCriteria: (FirstOrderOptimizerState[T, F, _] => Boolean))
+    stepSize: F)
     (implicit space: InnerProductSpace[T, F])
   extends FirstOrderOptimizer[T, F] {
   type History = T
@@ -29,6 +27,9 @@ class GradientDescent[T, F](
   def initialHistory(lossFunction: DifferentiableFunction[T, F], initialParams: T): History = {
     // TODO
     initialParams
+  }
+  def converged(state: State): Boolean = {
+    state.iter > 20
   }
 
   def updateHistory(
